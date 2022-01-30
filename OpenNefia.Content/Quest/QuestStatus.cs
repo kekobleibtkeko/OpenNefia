@@ -9,6 +9,7 @@ namespace OpenNefia.Content.Quest
 {
     public enum QuestStatusType
     {
+        Unstarted,
         Started,
         Failed,
         Completed

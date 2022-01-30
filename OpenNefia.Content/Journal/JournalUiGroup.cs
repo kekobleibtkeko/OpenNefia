@@ -1,6 +1,8 @@
 ﻿using OpenNefia.Content.Inventory;
 using OpenNefia.Content.UI;
+using OpenNefia.Core.GameObjects;
 using OpenNefia.Core.Input;
+using OpenNefia.Core.IoC;
 using OpenNefia.Core.Locale;
 using OpenNefia.Core.Maths;
 using OpenNefia.Core.Rendering;
@@ -60,8 +62,11 @@ namespace OpenNefia.Content.Journal
 
     public class JournalUiGroupArgs : UiGroupArgs<JournalUiLayer, JournalGroupUiArgs>
     {
+        [Dependency] private readonly IJournalSystem _journal = default!;
+
         public JournalUiGroupArgs(JournalGroupUiArgs.LogTab type)
         {
+            EntitySystem.InjectDependencies(this);
             foreach (JournalGroupUiArgs.LogTab logType in Enum.GetValues(typeof(JournalGroupUiArgs.LogTab)))
             {
                 var args = new JournalGroupUiArgs(logType);
@@ -70,7 +75,8 @@ namespace OpenNefia.Content.Journal
                 Layers[args] = logType switch
                 {
                     JournalGroupUiArgs.LogTab.Backlog => new BacklogUiLayer(),
-                    // TODO: add other group layers
+                    JournalGroupUiArgs.LogTab.Journal => _journal.GetJournalArgs().Layer,
+                    // TODO: add chat layer?
                     _ => new JournalUiLayer()
                 };
             }

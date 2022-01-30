@@ -124,6 +124,8 @@ namespace OpenNefia.Content.UI
             if (Layers.TryGetValue(SelectedArgs, out var layer))
             {
                 SelectedLayer = layer;
+                if (layer.DefaultZOrder != null)
+                    layer.ZOrder = layer.DefaultZOrder.Value;
                 AddChild(SelectedLayer);
 
                 UserInterfaceManager.InitializeLayer<TLayer, TSublayerArgs, TResult>(SelectedLayer, SelectedArgs);

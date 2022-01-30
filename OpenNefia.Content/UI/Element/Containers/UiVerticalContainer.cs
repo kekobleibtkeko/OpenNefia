@@ -11,6 +11,7 @@ namespace OpenNefia.Content.UI.Element.Containers
     public class UiVerticalContainer : UiContainer
     {
         public float YSpace { get; set; }
+        public float YMin { get; set; }
 
         protected override Vector2 RelayoutPreferredSize()
         {
@@ -29,9 +30,11 @@ namespace OpenNefia.Content.UI.Element.Containers
                         child.Element.SetPreferredSize();
                         child.Element.SetPosition(X + xOffset, Y + yTotal);
 
+                        var height = Math.Max(YMin, child.Element.Height);
+
                         if (child.Element.Width + xOffset > xMax)
                             xMax = child.Element.Width + xOffset;
-                        yTotal += child.Element.Height + yOffset + YSpace;
+                        yTotal += height + yOffset + YSpace;
 
                         break;
 

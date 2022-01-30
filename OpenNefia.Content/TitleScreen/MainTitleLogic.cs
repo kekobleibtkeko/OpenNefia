@@ -32,6 +32,7 @@ using System.Numerics;
 using OpenNefia.Core.Audio;
 using OpenNefia.Content.Logic;
 using OpenNefia.Core.Locale;
+using OpenNefia.Content.Quest;
 
 namespace OpenNefia.Content.TitleScreen
 {
@@ -183,8 +184,12 @@ namespace OpenNefia.Content.TitleScreen
             var playerSpatial = _entityManager.GetComponent<SpatialComponent>(player);
             playerSpatial.Coordinates = map.AtPosEntity(2, 2);
 
+            var questSys = EntitySystem.Get<IQuestSystem>();
             EntitySystem.Get<IRefreshSystem>().Refresh(player);
             EntitySystem.Get<SkillsSystem>().HealToMax(player);
+
+            var questCom = _entityManager.AddComponent<QuestProgressComponent>(player);
+            questSys.ProgressQuest(Protos.Quest.MainQuest);
 
             _mapManager.SetActiveMap(map.Id);
 

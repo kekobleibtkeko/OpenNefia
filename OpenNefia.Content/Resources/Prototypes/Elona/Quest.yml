@@ -1,2 +1,10 @@
 ﻿- type: Elona.Quest
-  node: 
+  id: Elona.MainQuest
+  node: !type:QuestNodeSequence
+    nodes:
+    - !type:QuestBasicNode
+      id: Main.StepOne
+    - !type:QuestBasicNode
+      id: Main.StepTwo
+    - !type:QuestBasicNode
+      id: Main.StepThree

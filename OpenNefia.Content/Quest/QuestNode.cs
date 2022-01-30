@@ -1,4 +1,5 @@
-﻿using OpenNefia.Core.Prototypes;
+﻿using OpenNefia.Core;
+using OpenNefia.Core.Prototypes;
 using OpenNefia.Core.Serialization.Manager.Attributes;
 using System;
 using System.Collections.Generic;
@@ -12,13 +13,20 @@ namespace OpenNefia.Content.Quest
     public interface IQuestNode
     {
         public string ID { get; }
+        public LocaleKey Desc { get; }
+        public bool IsBranch { get; }
         IQuestNode GetNextOrCurrent(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress);
     }
 
     public abstract class QuestNode : IQuestNode
     {
-        [DataField("id")]
+        [DataField("id", required: true)]
         public virtual string ID { get; } = default!;
+
+        [DataField]
+        public virtual LocaleKey Desc { get; } = LocaleKey.Empty;
+
+        public virtual bool IsBranch { get; }
 
         public abstract IQuestNode GetNextOrCurrent(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress);
     }
@@ -36,6 +44,9 @@ namespace OpenNefia.Content.Quest
             {
                 if (status.CompletedSteps.Contains(node.ID))
                     res = node;
+                var resNext = res.GetNextOrCurrent(questId, progress);
+                if (resNext != res)
+                    return resNext;
             }
             return res;
         }
@@ -45,6 +56,8 @@ namespace OpenNefia.Content.Quest
     {
         [DataField(required: true)]
         public List<IQuestNode> Nodes { get; } = new();
+
+        public override bool IsBranch => true;
 
         public override IQuestNode GetNextOrCurrent(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress)
         {
@@ -62,6 +75,14 @@ namespace OpenNefia.Content.Quest
         {
             var proto = PrototypeID.ResolvePrototype();
             return proto.Node.GetNextOrCurrent(questId, progress);
+        }
+    }
+
+    public sealed class QuestBasicNode : QuestNode
+    {
+        public override IQuestNode GetNextOrCurrent(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress)
+        {
+            return this;
         }
     }
 }

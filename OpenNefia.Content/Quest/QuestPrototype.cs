@@ -1,4 +1,5 @@
-﻿using OpenNefia.Core.Prototypes;
+﻿using OpenNefia.Core;
+using OpenNefia.Core.Prototypes;
 using OpenNefia.Core.Serialization.Manager.Attributes;
 using System;
 using System.Collections.Generic;
@@ -11,8 +12,11 @@ namespace OpenNefia.Content.Quest
     [Prototype("Elona.Quest")]
     public class QuestPrototype : IPrototype
     {
-        [DataField("id")]
+        [DataField("id", required: true)]
         public string ID { get; } = default!;
+
+        [DataField]
+        public LocaleKey TitleLoc { get; } = LocaleKey.Empty;
 
         [DataField(required: true)]
         public IQuestNode Node { get; } = default!;
