@@ -1,4 +1,5 @@
 ﻿using OpenNefia.Content.Quest;
+using OpenNefia.Content.Prototypes;
 using OpenNefia.Core;
 using OpenNefia.Core.Game;
 using OpenNefia.Core.GameObjects;
@@ -7,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using OpenNefia.Core.Locale;
 
 namespace OpenNefia.Content.Journal
 {
@@ -17,12 +19,17 @@ namespace OpenNefia.Content.Journal
 
     public class JournalSystem : EntitySystem, IJournalSystem
     {
-        public const string NewsPageId = "JournalNews";
-        public const string QuestPageId = "JournalQuest";
-        public const string QuestItemPageId = "JournalQuestItem";
-        public const string TitleRankPageId = "JournalTitleRank";
-        public const string IncomePageId = "JournalIncome";
-        public const string CompletedQuestsPageId = "JournalCompletedQuests";
+        public const string QuestHeaderMain = "Header.QuestMain";
+        public const string QuestHeaderSub = "Header.QuestSub";
+
+        public const string NewsPageId = "News";
+        public const string QuestPageId = "Quest";
+        public const string QuestItemPageId = "QuestItem";
+        public const string TitleRankPageId = "TitleRank";
+        public const string IncomePageId = "Income";
+        public const string CompletedQuestsPageId = "CompletedQuests";
+
+        private LocaleKey JournalKey = new("Elona.Journal");
 
         public override void Initialize()
         {
@@ -31,23 +38,27 @@ namespace OpenNefia.Content.Journal
 
         private void AddQuestEntries(EntityUid uid, QuestProgressComponent component, OpenJournalArgs args)
         {
-            foreach(var (id, status) in component.QuestProgress)
+            args.Entries.Add(new JournalQuestHeaderEntry(Loc.GetString(JournalKey.With(QuestHeaderMain)), QuestPageId));
+            args.Entries.Add(new JournalQuestEntry(Protos.Quest.MainQuest, QuestPageId));
+            args.Entries.Add(new JournalSpacerEntry(1, QuestPageId));
+            args.Entries.Add(new JournalQuestHeaderEntry(Loc.GetString(JournalKey.With(QuestHeaderSub)), QuestPageId));
+            foreach (var (id, status) in component.QuestProgress)
             {
-                if (status.Status == QuestStatusType.Unstarted)
+                if (status.Status == QuestStatusType.Unstarted || id == Protos.Quest.MainQuest)
                     continue;
-                args.Entries.Add(new JournalQuestEntry(id, status.Status == QuestStatusType.Completed ? CompletedQuestsPageId : QuestItemPageId));
+                args.Entries.Add(new JournalQuestEntry(id, status.Status == QuestStatusType.Completed ? CompletedQuestsPageId : QuestPageId));
             }
         }
 
         public OpenJournalArgs GetJournalArgs()
         {
             var args = new OpenJournalArgs();
-            args.Pages.Add(new(NewsPageId, $"Elona.Journal.{NewsPageId}"));
-            args.Pages.Add(new(QuestPageId, $"Elona.Journal.{QuestPageId}", NewsPageId));
-            args.Pages.Add(new(QuestItemPageId, $"Elona.Journal.{QuestItemPageId}", QuestPageId));
-            args.Pages.Add(new(TitleRankPageId, $"Elona.Journal.{TitleRankPageId}", QuestItemPageId));
-            args.Pages.Add(new(IncomePageId, $"Elona.Journal.{IncomePageId}", TitleRankPageId));
-            args.Pages.Add(new(CompletedQuestsPageId, $"Elona.Journal.{CompletedQuestsPageId}", IncomePageId));
+            args.Pages.Add(new(NewsPageId, JournalKey.With(NewsPageId)));
+            args.Pages.Add(new(QuestPageId, JournalKey.With(QuestPageId), NewsPageId));
+            args.Pages.Add(new(QuestItemPageId, JournalKey.With(QuestItemPageId), QuestPageId));
+            args.Pages.Add(new(TitleRankPageId, JournalKey.With(TitleRankPageId), QuestItemPageId));
+            args.Pages.Add(new(IncomePageId, JournalKey.With(IncomePageId), TitleRankPageId));
+            args.Pages.Add(new(CompletedQuestsPageId, JournalKey.With(CompletedQuestsPageId), IncomePageId));
 
             RaiseLocalEvent(GameSession.Player, args);
 

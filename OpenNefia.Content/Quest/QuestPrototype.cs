@@ -15,9 +15,6 @@ namespace OpenNefia.Content.Quest
         [DataField("id", required: true)]
         public string ID { get; } = default!;
 
-        [DataField]
-        public LocaleKey TitleLoc { get; } = LocaleKey.Empty;
-
         [DataField(required: true)]
         public IQuestNode Node { get; } = default!;
     }

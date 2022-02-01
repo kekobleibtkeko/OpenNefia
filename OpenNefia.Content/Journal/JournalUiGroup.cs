@@ -1,5 +1,6 @@
 ﻿using OpenNefia.Content.Inventory;
 using OpenNefia.Content.UI;
+using OpenNefia.Content.UI.Hud;
 using OpenNefia.Core.GameObjects;
 using OpenNefia.Core.Input;
 using OpenNefia.Core.IoC;
@@ -41,6 +42,7 @@ namespace OpenNefia.Content.Journal
             EventFilter = UIEventFilterMode.Pass;
             CanControlFocus = true;
         }
+
         protected virtual void OnKeyDown(GUIBoundKeyEventArgs args)
         {
             if (args.Function == EngineKeyFunctions.UICancel)
@@ -85,6 +87,8 @@ namespace OpenNefia.Content.Journal
 
     public class JournalUiGroup : UiGroup<JournalUiLayer, JournalUiGroupArgs, JournalGroupUiArgs, UINone>
     {
+        public override int? DefaultZOrder => HudLayer.HudZOrder + 1000;
+
         protected override AssetDrawable? GetIcon(JournalGroupUiArgs args)
         {
             var iconType = args.Type switch

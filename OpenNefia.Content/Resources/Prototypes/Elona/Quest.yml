@@ -3,7 +3,7 @@
   node: !type:QuestNodeSequence
     nodes:
     - !type:QuestBasicNode
-      id: Main.StepOne
+      id: Lesimas1
     - !type:QuestBasicNode
       id: Main.StepTwo
     - !type:QuestBasicNode

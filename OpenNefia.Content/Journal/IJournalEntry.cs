@@ -1,6 +1,7 @@
 ﻿using OpenNefia.Content.Quest;
 using OpenNefia.Content.UI;
 using OpenNefia.Core;
+using OpenNefia.Core.Game;
 using OpenNefia.Core.GameObjects;
 using OpenNefia.Core.IoC;
 using OpenNefia.Core.Locale;
@@ -35,9 +36,29 @@ namespace OpenNefia.Content.Journal
         public abstract IEnumerable<IJournalEntryContent> GetContent();
     }
 
+    public sealed class JournalQuestHeaderEntry : JournalEntry
+    {
+        private string Content { get; }
+
+        public JournalQuestHeaderEntry(string content, string pageID) : base(pageID)
+        {
+            Content = content;
+        }
+
+        public override IEnumerable<IJournalEntryContent> GetContent()
+        {
+            yield return new JournalEntryContent(Content)
+            {
+                Color = new Color(23, 54, 22),
+                Font = UiFonts.JournalQuestHeader
+            };
+        }
+    }
+
     public sealed class JournalQuestEntry : JournalEntry
     {
         [Dependency] private readonly IQuestSystem _quest = default!;
+        [Dependency] private readonly IEntityManager _entMan = default!;
 
         public PrototypeId<QuestPrototype> QuestID { get; }
 
@@ -52,11 +73,31 @@ namespace OpenNefia.Content.Journal
             if (_quest.TryGetCurrentNode(QuestID, out var node) == GetQuestNodeType.Failed)
                 yield break;
 
-            var proto = QuestID.ResolvePrototype()!;
-            if (proto.TitleLoc != LocaleKey.Empty)
-                yield return new JournalHeader(proto.TitleLoc);
-            if (node!.Desc != LocaleKey.Empty)
-                yield return new JournalContent(node.Desc);
+            var title = Loc.GetPrototypeString(QuestID, "Title");
+            if (!title.StartsWith("<"))
+                yield return new JournalHeader(title);
+
+            var progress = _entMan.EnsureComponent<QuestProgressComponent>(GameSession.Player);
+            yield return new JournalContent(node!.GetDescription(QuestID, progress));
+            yield return new JournalEntryContent(string.Empty);
+        }
+    }
+
+    public sealed class JournalSpacerEntry : JournalEntry
+    {
+        public int LineCount { get; }
+
+        public JournalSpacerEntry(int lineCount, string pageID) : base(pageID)
+        {
+            LineCount = lineCount;
+        }
+
+        public override IEnumerable<IJournalEntryContent> GetContent()
+        {
+            for (int i = 0; i < LineCount; i++)
+            {
+                yield return new JournalEntryContent(string.Empty);
+            }
         }
     }
 
@@ -67,28 +108,28 @@ namespace OpenNefia.Content.Journal
         public FontSpec Font { get; }
     }
 
-    public abstract class JournalEntryContent : IJournalEntryContent
+    public class JournalEntryContent : IJournalEntryContent
     {
         public virtual string Text { get; set; } = "";
         public virtual Color Color { get; set; } = Color.Black;
         public virtual FontSpec Font { get; set; } = UiFonts.JournalText;
 
-        public JournalEntryContent(LocaleKey textLocKey)
+        public JournalEntryContent(string content)
         {
-            Text = Loc.GetString(textLocKey);
+            Text = content;
         }
     }
 
     public sealed class JournalHeader : JournalEntryContent
     {
-        public JournalHeader(LocaleKey textLocKey) : base(textLocKey)
+        public JournalHeader(string content) : base(content)
         {
         }
     }
 
     public sealed class JournalContent : JournalEntryContent
     {
-        public JournalContent(LocaleKey textLocKey) : base(textLocKey)
+        public JournalContent(string content) : base(content)
         {
         }
     }
