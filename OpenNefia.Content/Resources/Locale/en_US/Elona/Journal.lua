@@ -4,6 +4,7 @@ Elona.Journal = {
         QuestSub = "[Sub Quest]",
     },
     More = "(more)",
+    QuestDone = "[done]",
     News = "News",
     Quest = "Quest",
     QuestItem = "Quest Item",

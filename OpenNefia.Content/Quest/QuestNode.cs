@@ -1,4 +1,8 @@
-﻿using OpenNefia.Core;
+﻿using OpenNefia.Content.DisplayName;
+using OpenNefia.Core;
+using OpenNefia.Core.Game;
+using OpenNefia.Core.GameObjects;
+using OpenNefia.Core.IoC;
 using OpenNefia.Core.Locale;
 using OpenNefia.Core.Prototypes;
 using OpenNefia.Core.Serialization.Manager.Attributes;
@@ -10,36 +14,47 @@ using System.Threading.Tasks;
 
 namespace OpenNefia.Content.Quest
 {
+    public enum QuestNodeType
+    {
+        Normal,
+        Branch,
+        End
+    }
+
     [ImplicitDataDefinitionForInheritors]
     public interface IQuestNode
     {
         public LocaleKey ID { get; }
-        public bool IsBranch { get; }
+        public QuestNodeType Type { get; }
         IQuestNode GetNextOrCurrent(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress);
         string GetDescription(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress);
     }
 
-    public abstract class QuestNode : IQuestNode
+    public class QuestNode : IQuestNode
     {
-        [DataField("id", required: true)]
-        public virtual LocaleKey ID { get; } = default!;
+        [DataField("id")]
+        public virtual LocaleKey ID { get; } = LocaleKey.Empty;
 
         [DataField]
-        public List<IQuestFormatData>? Format { get; }
+        public List<IQuestFormatData>? FormatData { get; }
 
-        public virtual bool IsBranch { get; }
+        public virtual QuestNodeType Type { get; }
 
-        public abstract IQuestNode GetNextOrCurrent(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress);
+        public virtual IQuestNode GetNextOrCurrent(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress)
+        {
+            return this;
+        }
 
         public virtual string GetDescription(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress)
         {
-            if (Format != null)
+            if (FormatData != null)
                 return Loc.GetPrototypeString(questId, $"Desc.{ID}", 
-                    Format.Select((x, ind) => new LocaleArg($"_{ind}", x.GetFormatted(questId, progress))).ToArray());
+                    FormatData.Select((x, ind) => new LocaleArg($"_{ind}", x.GetFormatted(questId, progress))).ToArray());
             return Loc.GetPrototypeString(questId, $"Desc.{ID}");
         }
     }
 
+    [ImplicitDataDefinitionForInheritors]
     public interface IQuestFormatData
     {
         string GetFormatted(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress);
@@ -48,6 +63,17 @@ namespace OpenNefia.Content.Quest
     public abstract class QuestFormatData : IQuestFormatData
     {
         public abstract string GetFormatted(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress);
+    }
+
+    public sealed class QuestPlayerNameFormat : QuestFormatData
+    {
+        [Dependency] private readonly IDisplayNameSystem _nameSys = default!;
+
+        public override string GetFormatted(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress)
+        {
+            EntitySystem.InjectDependencies(this);
+            return _nameSys.GetDisplayName(GameSession.Player);
+        }
     }
 
     public sealed class QuestNodeSequence : QuestNode
@@ -61,13 +87,11 @@ namespace OpenNefia.Content.Quest
             var res = Nodes.First();
             foreach (var node in Nodes)
             {
-                if (status.CompletedSteps.Contains(node.ID))
-                    res = node;
-                var resNext = res.GetNextOrCurrent(questId, progress);
-                if (resNext != res)
-                    return resNext;
+                res = node;
+                if (!status.CompletedSteps.Contains(node.ID))
+                    break;
             }
-            return res;
+            return res.GetNextOrCurrent(questId, progress);
         }
 
         public override string GetDescription(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress)
@@ -81,7 +105,7 @@ namespace OpenNefia.Content.Quest
         [DataField(required: true)]
         public List<IQuestNode> Nodes { get; } = new();
 
-        public override bool IsBranch => true;
+        public override QuestNodeType Type => QuestNodeType.Branch;
 
         public override IQuestNode GetNextOrCurrent(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress)
         {
@@ -113,11 +137,8 @@ namespace OpenNefia.Content.Quest
         }
     }
 
-    public sealed class QuestBasicNode : QuestNode
+    public sealed class QuestEnd : QuestNode
     {
-        public override IQuestNode GetNextOrCurrent(PrototypeId<QuestPrototype> questId, QuestProgressComponent progress)
-        {
-            return this;
-        }
+        public override QuestNodeType Type => QuestNodeType.End;
     }
 }

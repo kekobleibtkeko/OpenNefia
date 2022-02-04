@@ -41,6 +41,11 @@ namespace OpenNefia.Core.Locale
             return _localization.IsFullwidth();
         }
 
+        public static char GetWhitespace()
+        {
+            return _localization.GetWhitespace();
+        }
+
         public static string Capitalize(string text)
         {
             // TODO

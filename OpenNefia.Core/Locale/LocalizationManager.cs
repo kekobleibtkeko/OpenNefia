@@ -41,6 +41,7 @@ namespace OpenNefia.Core.Locale
         void Initialize();
 
         bool IsFullwidth();
+        char GetWhitespace();
         void SwitchLanguage(PrototypeId<LanguagePrototype> language);
 
         void DoLocalize(object o, LocaleKey key);
@@ -233,6 +234,15 @@ namespace OpenNefia.Core.Locale
         public bool IsFullwidth()
         {
             return Language == LanguagePrototypeOf.Japanese;
+        }
+
+        public char GetWhitespace()
+        {
+            return Language switch
+            {
+                var jp when jp == LanguagePrototypeOf.Japanese => '　',
+                _ => ' '
+            };
         }
 
         public bool TryGetLocalizationData(EntityUid uid, [NotNullWhen(true)] out LuaTable? table)

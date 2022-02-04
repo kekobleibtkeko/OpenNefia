@@ -70,16 +70,27 @@ namespace OpenNefia.Content.Journal
         public override IEnumerable<IJournalEntryContent> GetContent()
         {
             EntitySystem.InjectDependencies(this);
-            if (_quest.TryGetCurrentNode(QuestID, out var node) == GetQuestNodeType.Failed)
+            var nodeRes = _quest.GetCurrentNode(QuestID, out var node);
+            if (nodeRes == GetQuestNodeType.Failed)
                 yield break;
 
             var title = Loc.GetPrototypeString(QuestID, "Title");
             if (!title.StartsWith("<"))
+            {
+                title = nodeRes switch
+                {
+                    GetQuestNodeType.End => Loc.GetString("Elona.Journal.QuestDone") + title,
+                    _ => $"({title})",
+                };
                 yield return new JournalHeader(title);
+            }
 
             var progress = _entMan.EnsureComponent<QuestProgressComponent>(GameSession.Player);
-            yield return new JournalContent(node!.GetDescription(QuestID, progress));
-            yield return new JournalEntryContent(string.Empty);
+            if (nodeRes == GetQuestNodeType.Succeeded)
+            {
+                yield return new JournalContent(node!.GetDescription(QuestID, progress));
+                yield return new JournalEntryContent(string.Empty);
+            }
         }
     }
 

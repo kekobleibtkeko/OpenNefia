@@ -2,9 +2,18 @@
   id: Elona.MainQuest
   node: !type:QuestNodeSequence
     nodes:
-    - !type:QuestBasicNode
+    - !type:QuestNode
       id: Lesimas1
-    - !type:QuestBasicNode
-      id: Main.StepTwo
-    - !type:QuestBasicNode
-      id: Main.StepThree
+    - !type:QuestNode
+      id: reqseq
+    - !type:QuestNode
+      id: afterseq
+
+- type: Elona.Quest
+  id: Elona.ShenaThieves
+  node: !type:QuestNodeSequence
+    nodes:
+    - !type:QuestNode
+      id: Hideout
+    - !type:QuestEnd
+      id: ecksdee

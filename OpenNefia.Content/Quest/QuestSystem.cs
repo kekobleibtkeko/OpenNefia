@@ -15,6 +15,7 @@ namespace OpenNefia.Content.Quest
     public enum QuestProgressResultType
     {
         Progressed,
+        Started,
         NoChange,
         Completed,
     }
@@ -29,7 +30,7 @@ namespace OpenNefia.Content.Quest
 
     public interface IQuestSystem : IEntitySystem
     {
-        GetQuestNodeType TryGetCurrentNode(PrototypeId<QuestPrototype> id, out IQuestNode? node);
+        GetQuestNodeType GetCurrentNode(PrototypeId<QuestPrototype> id, out IQuestNode? node);
         QuestProgressResultType ProgressQuest(PrototypeId<QuestPrototype> id, string? branch = null);
         bool FailQuest(PrototypeId<QuestPrototype> id);
     }
@@ -43,13 +44,16 @@ namespace OpenNefia.Content.Quest
         {
         }
 
-        public GetQuestNodeType TryGetCurrentNode(PrototypeId<QuestPrototype> id, out IQuestNode? node)
+        public GetQuestNodeType GetCurrentNode(PrototypeId<QuestPrototype> id, out IQuestNode? node)
         {
             node = null;
             var progress = _entMan.EnsureComponent<QuestProgressComponent>(GameSession.Player);
 
             if (!_protos.TryIndex(id, out var questProto))
+            {
+                Logger.WarningS("quest", $"Unable to get current node for {id}, unable to resolve prototype");
                 return GetQuestNodeType.Failed;
+            }
 
             if (!progress.QuestProgress.TryGetValue(id, out var status))
             {
@@ -58,46 +62,41 @@ namespace OpenNefia.Content.Quest
             }
 
             node = questProto.Node.GetNextOrCurrent(id, progress);
-            for(int i = 0; i < status.CompletedSteps.Count; i++)
+            return node.Type switch
             {
-                var next = node;
-                if (status.CompletedSteps.Contains(node.ID))
-                    next = node.GetNextOrCurrent(id, progress);
-                if (next == node)
-                {
-                    return node.IsBranch ? GetQuestNodeType.Branch : GetQuestNodeType.End;
-                }
-                node = next;
-            }
-            return GetQuestNodeType.Succeeded;
+                QuestNodeType.Branch => GetQuestNodeType.Branch,
+                QuestNodeType.End => GetQuestNodeType.End,
+                _ => GetQuestNodeType.Succeeded,
+            };
         }
 
         public QuestProgressResultType ProgressQuest(PrototypeId<QuestPrototype> id, string? branch = null)
         {
             var progress = _entMan.EnsureComponent<QuestProgressComponent>(GameSession.Player);
 
-            var nodeStatus = TryGetCurrentNode(id, out var current);
+            var nodeStatus = GetCurrentNode(id, out var current);
             if (current == null)
+            {
+                Logger.WarningS("quest", $"Node for quest {id} was null, unable to progress");
                 return QuestProgressResultType.NoChange;
+            }
 
             var status = progress.QuestProgress[id];
             if (status.Status == QuestStatusType.Unstarted)
+            {
                 status.Status = QuestStatusType.Started;
+                return QuestProgressResultType.Started;
+            }
 
             switch (nodeStatus)
             {
                 case GetQuestNodeType.Failed:
                     Logger.WarningS("quest", $"Unable to get current node for quest {id}");
                     return QuestProgressResultType.NoChange;
-                case GetQuestNodeType.End:
-
-                    status.Status = QuestStatusType.Completed;
-
-                    return QuestProgressResultType.Completed;
                 case GetQuestNodeType.Branch:
                     if (string.IsNullOrEmpty(branch))
                     {
-                        Logger.WarningS("quest", $"Current node has branches, but no branch was defined for quest {id}");
+                        Logger.WarningS("quest", $"Current node has branches, but no branch was given to progress to for quest {id}");
                         return QuestProgressResultType.NoChange;
                     }
                     else
@@ -106,8 +105,15 @@ namespace OpenNefia.Content.Quest
                         return QuestProgressResultType.Progressed;
                     }
                 default:
-                    var next = current.GetNextOrCurrent(id, progress);
-                    status.CompletedSteps.Add(next.ID);
+                    status.CompletedSteps.Add(current.ID);
+
+                    var nextRes = GetCurrentNode(id, out var next);
+                    if (nextRes != GetQuestNodeType.Failed && next!.Type == QuestNodeType.End)
+                    {
+                        status.CompletedSteps.Add(next.ID);
+                        status.Status = QuestStatusType.Completed;
+                        return QuestProgressResultType.Completed;
+                    }
                     return QuestProgressResultType.Progressed;
             }
         }

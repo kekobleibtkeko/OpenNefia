@@ -38,6 +38,11 @@ namespace OpenNefia.Tests
             return false;
         }
 
+        public char GetWhitespace()
+        {
+            return ' ';
+        }
+
         public void LoadContentFile(ResourcePath luaFile)
         {
         }

@@ -18,23 +18,40 @@ using OpenNefia.Core;
 using OpenNefia.Core.Input;
 using OpenNefia.Core.Audio;
 using OpenNefia.Core.Log;
+using OpenNefia.Core.Graphics;
 
 namespace OpenNefia.Content.Journal
 {
     public class VanillaJournalLayer : JournalUiLayer
     {
-        [Dependency] private readonly IJournalSystem _journal = default!;
+        private struct JournalPage
+        {
+            public string PageID { get; }
+            public UiContainer PageContainer { get; }
 
-        public override int? DefaultZOrder => HudLayer.HudZOrder + 1000;
-        private float PageWidth => 270 * UIScale;
+            public JournalPage(string pageID, UiContainer pageContainer)
+            {
+                PageID = pageID;
+                PageContainer = pageContainer;
+            }
+        }
+
+        [Dependency] private readonly IJournalSystem _journal = default!;
+        [Dependency] private readonly IGraphics _graphics = default!;
+
+        private float PageWidth => RawPageWidth * UIScale;
+
+        private const int RawPageWidth = 270;
         private const int BookWidth = 736;
         private const int BookHeight = 448;
         private const int LineAmount = 21;
 
-        private List<UiContainer> ContentContainers { get; } = new();
+        private List<JournalPage> Pages { get; } = new();
         private int Page { get; set; }
         private UiContainer? LeftPage { get; set; }
         private UiContainer? RightPage { get; set; }
+
+        private int PageCount => (Pages.Count / 2) - 1 + (Pages.Count % 2);
 
         [Child] private AssetDrawable BookAsset;
 
@@ -45,7 +62,7 @@ namespace OpenNefia.Content.Journal
 
         public override void GetPreferredBounds(out UIBox2 bounds)
         {
-            UiUtils.GetCenteredParams(BookWidth * UIScale, BookHeight * UIScale, out bounds);
+            UiUtils.GetCenteredParams(BookWidth, BookHeight, out bounds);
         }
 
         public override void SetSize(float width, float height)
@@ -58,6 +75,11 @@ namespace OpenNefia.Content.Journal
         {
             base.SetPosition(x, y);
             BookAsset.SetPosition(X, Y);
+            SetPagePositions();
+        }
+
+        private void SetPagePositions()
+        {
             if (LeftPage != null)
             {
                 LeftPage.SetPosition(X + 75, Y + 50);
@@ -79,8 +101,17 @@ namespace OpenNefia.Content.Journal
         public override void Initialize(JournalGroupUiArgs args)
         {
             base.Initialize(args);
+            LayerUIScale = _graphics.WindowScale;
             SetupPages();
-            SetPage(Page, false);
+            for (int i = 0; i < PageCount; i++)
+            {
+                var page = Pages[i];
+                if (page.PageID == JournalSystem.QuestPageId)
+                {
+                    SetPage((i / 2), false);
+                    break;
+                }
+            }
         }
 
         public override void Draw()
@@ -95,46 +126,42 @@ namespace OpenNefia.Content.Journal
 
         private void SetPage(int page, bool playSound = true)
         {
+            Page = MathHelper.Wrap(page, 0, PageCount);
+
             if (LeftPage != null)
                 RemoveChild(LeftPage);
             if (RightPage != null)
                 RemoveChild(RightPage);
 
-            LeftPage = ContentContainers.Skip(page).FirstOrDefault();
+            LeftPage = Pages.Skip(Page * 2).FirstOrDefault().PageContainer;
             if (LeftPage != null)
                 AddChild(LeftPage);
-            RightPage = ContentContainers.Skip(page + 1).FirstOrDefault();
+            RightPage = Pages.Skip((Page * 2) + 1).FirstOrDefault().PageContainer;
             if (RightPage != null)
                 AddChild(RightPage);
 
             if (playSound)
                 Sounds.Play(Protos.Sound.Card1);
+
+            SetPagePositions();
         }
 
         protected override void KeyBindDown(GUIBoundKeyEventArgs args)
         {
-            var oldPage = Page;
             if (args.Function == EngineKeyFunctions.UINextPage)
             {
-                if (Page * 2 > ContentContainers.Count)
-                    Page = 0;
-                else
-                    Page += 2;
-                SetPage(Page);
-                SetPosition(X, Y);
+                SetPage(Page + 1);
+                args.Handle();
             }
             else if (args.Function == EngineKeyFunctions.UIPreviousPage)
             {
-                if (Page <= 0)
-                    Page = (ContentContainers.Count / 2) + 1;
-                else
-                    Page -= 2;
-                SetPage(Page);
-                SetPosition(X, Y);
+                SetPage(Page - 1);
+                args.Handle();
             }
             else if (args.Function == EngineKeyFunctions.UICancel)
             {
                 Finish(new());
+                args.Handle();
             }
         }
 
@@ -143,6 +170,7 @@ namespace OpenNefia.Content.Journal
             var pageNumTexts = new List<UiText>();
             int pageNum = 0;
             int addedLines = 0;
+            string curId = string.Empty;
             UiContainer? container;
 
             UiVerticalContainer _MakeNewContainer(LocaleKey title)
@@ -151,7 +179,7 @@ namespace OpenNefia.Content.Journal
                 {
                     YMin = 14,
                 };
-                cont.AddElement(new UiText(UiFonts.JournalText, $" - {Loc.GetString(title)} -"));
+                cont.AddElement(new UiText(UiFonts.JournalText, $"{Loc.GetWhitespace()}- {Loc.GetString(title)} -"));
                 cont.AddElement(new UiText(UiFonts.JournalText));
                 return cont;
             }
@@ -166,6 +194,7 @@ namespace OpenNefia.Content.Journal
                 var numText = new UiText(UiFonts.JournalText, $"{new string(' ', 16)}- {pageNum} -");
                 pageNumTexts.Add(numText);
                 container?.AddElement(numText);
+                Pages.Add(new(curId, container!));
             }
 
             var args = _journal.GetJournalArgs();
@@ -173,10 +202,10 @@ namespace OpenNefia.Content.Journal
             var pages = args.Pages.Where(x => x.OrderAfter == null);
             while (pages.Any())
             {
-                var curId = pages.First().PageID;
+                curId = pages.First().PageID;
                 if (visitedIds.Contains(curId))
                 {
-                    Logger.Warning("journal", $"Cyclic PageId for id {curId}");
+                    Logger.WarningS("journal", $"Cyclic page order for id {curId}");
                     break;
                 }
                 visitedIds.Add(curId);
@@ -188,27 +217,24 @@ namespace OpenNefia.Content.Journal
                     if (!entries.Any())
                     {
                         _CompletePage();
-                        ContentContainers.Add(container);
                         continue;
                     }
 
-                    foreach(var entry in entries)
+                    foreach (var entry in entries)
                     {
-                        var lines = GetPageLines(entry).ToList();
-                        if (addedLines > LineAmount + lines.Count)
+                        foreach(var line in GetPageLines(entry))
                         {
-                            _CompletePage();
-                            container = _MakeNewContainer(page.LocaleKey);
-                            addedLines = 0;
-                        }
-                        foreach(var line in lines)
-                        {
+                            if (addedLines + 1 > LineAmount)
+                            {
+                                _CompletePage();
+                                container = _MakeNewContainer(page.LocaleKey);
+                                addedLines = 0;
+                            }
                             container.AddElement(line);
                             addedLines++;
                         }
                     }
                     _CompletePage();
-                    ContentContainers.Add(container);
                 }
                 pages = args.Pages.Where(x => x.OrderAfter == curId);
             }
@@ -224,24 +250,13 @@ namespace OpenNefia.Content.Journal
 
         private IEnumerable<UiElement> GetPageLines(IJournalEntry entry)
         {
-            float totalWidth = 0;
             foreach(var content in entry.GetContent())
             {
-                var sb = new StringBuilder();
-                var words = UiHelpers.SplitString(content.Text, Loc.Language);
-                foreach(var word in words)
+                var wrap = content.Font.LoveFont.GetWrap(content.Text, PageWidth);
+                foreach(var str in wrap.Item2)
                 {
-                    var wordWidth = content.Font.LoveFont.GetWidthV(UIScale, word);
-                    if (totalWidth + wordWidth > PageWidth)
-                    {
-                        yield return new UiText(content.Font, sb.ToString().TrimStart()) { Color = content.Color };
-                        totalWidth = 0;
-                        sb.Clear();
-                    }
-                    sb.Append(word);
-                    totalWidth += wordWidth;
+                    yield return new UiText(content.Font, str) { Color = content.Color };
                 }
-                yield return new UiText(content.Font, sb.ToString().TrimStart()) { Color = content.Color };
             }
         }
     }

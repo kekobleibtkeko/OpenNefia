@@ -8,8 +8,9 @@ namespace OpenNefia.Content.Prototypes
         {
             #pragma warning disable format
 
-            public static readonly QuestPrototypeId MainQuest   = new($"Elona.{nameof(MainQuest)}");
-
+            public static readonly QuestPrototypeId MainQuest       = new($"Elona.{nameof(MainQuest)}");
+            public static readonly QuestPrototypeId ShenaThieves    = new($"Elona.{nameof(ShenaThieves)}");
+            
             #pragma warning restore format
         }
     }
