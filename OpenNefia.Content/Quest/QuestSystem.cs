@@ -1,5 +1,6 @@
 ﻿using OpenNefia.Content.Logic;
 using OpenNefia.Content.Prototypes;
+using OpenNefia.Content.UI;
 using OpenNefia.Core.Audio;
 using OpenNefia.Core.Game;
 using OpenNefia.Core.GameObjects;
@@ -133,12 +134,30 @@ namespace OpenNefia.Content.Quest
         {
             Sounds.Play(Protos.Sound.Write1);
             _mes.Newline();
-            _mes.Display(Loc.GetString("Elona.Quest.JournalUpdated"));
+            _mes.Display(Loc.GetString("Elona.Quest.JournalUpdated"), UiColors.MesYellow);
         }
 
         public bool FailQuest(PrototypeId<QuestPrototype> id)
         {
-            throw new NotImplementedException();
+            var progress = _entMan.EnsureComponent<QuestProgressComponent>(GameSession.Player);
+            if (!progress.QuestProgress.TryGetValue(id, out var status))
+            {
+                status = new QuestStatus
+                {
+                    Status = QuestStatusType.Failed
+                };
+                progress.QuestProgress[id] = status;
+                return true;
+            }
+
+            if (status.Status == QuestStatusType.Completed || status.Status == QuestStatusType.Failed)
+            {
+                Logger.WarningS("quest", $"Attempted to fail a {status.Status} quest, aborting");
+                return false;
+            }
+
+            status.Status = QuestStatusType.Failed;
+            return true;
         }
     }
 }
