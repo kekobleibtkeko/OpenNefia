@@ -1,6 +1,10 @@
-﻿using OpenNefia.Core.Game;
+﻿using OpenNefia.Content.Logic;
+using OpenNefia.Content.Prototypes;
+using OpenNefia.Core.Audio;
+using OpenNefia.Core.Game;
 using OpenNefia.Core.GameObjects;
 using OpenNefia.Core.IoC;
+using OpenNefia.Core.Locale;
 using OpenNefia.Core.Log;
 using OpenNefia.Core.Prototypes;
 using System;
@@ -31,12 +35,13 @@ namespace OpenNefia.Content.Quest
     public interface IQuestSystem : IEntitySystem
     {
         GetQuestNodeType GetCurrentNode(PrototypeId<QuestPrototype> id, out IQuestNode? node);
-        QuestProgressResultType ProgressQuest(PrototypeId<QuestPrototype> id, string? branch = null);
+        QuestProgressResultType ProgressQuest(PrototypeId<QuestPrototype> id, string? branch = null, bool broadcast = true);
         bool FailQuest(PrototypeId<QuestPrototype> id);
     }
 
     public sealed class QuestSystem : EntitySystem, IQuestSystem
     {
+        [Dependency] private readonly IMessage _mes = default!;
         [Dependency] private readonly IPrototypeManager _protos = default!;
         [Dependency] private readonly IEntityManager _entMan = default!;
 
@@ -70,7 +75,7 @@ namespace OpenNefia.Content.Quest
             };
         }
 
-        public QuestProgressResultType ProgressQuest(PrototypeId<QuestPrototype> id, string? branch = null)
+        public QuestProgressResultType ProgressQuest(PrototypeId<QuestPrototype> id, string? branch = null, bool broadcast = true)
         {
             var progress = _entMan.EnsureComponent<QuestProgressComponent>(GameSession.Player);
 
@@ -85,6 +90,8 @@ namespace OpenNefia.Content.Quest
             if (status.Status == QuestStatusType.Unstarted)
             {
                 status.Status = QuestStatusType.Started;
+                if (broadcast)
+                    BroadcastQuestChange();
                 return QuestProgressResultType.Started;
             }
 
@@ -102,6 +109,8 @@ namespace OpenNefia.Content.Quest
                     else
                     {
                         status.CompletedSteps.Add(branch);
+                        if (broadcast)
+                            BroadcastQuestChange();
                         return QuestProgressResultType.Progressed;
                     }
                 default:
@@ -114,8 +123,17 @@ namespace OpenNefia.Content.Quest
                         status.Status = QuestStatusType.Completed;
                         return QuestProgressResultType.Completed;
                     }
+                    if (broadcast)
+                        BroadcastQuestChange();
                     return QuestProgressResultType.Progressed;
             }
+        }
+
+        private void BroadcastQuestChange()
+        {
+            Sounds.Play(Protos.Sound.Write1);
+            _mes.Newline();
+            _mes.Display(Loc.GetString("Elona.Quest.JournalUpdated"));
         }
 
         public bool FailQuest(PrototypeId<QuestPrototype> id)

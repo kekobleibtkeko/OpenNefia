@@ -189,8 +189,8 @@ namespace OpenNefia.Content.TitleScreen
             EntitySystem.Get<SkillsSystem>().HealToMax(player);
 
             var questCom = _entityManager.EnsureComponent<QuestProgressComponent>(player);
-            questSys.ProgressQuest(Protos.Quest.MainQuest);
-            questSys.ProgressQuest(Protos.Quest.ShenaThieves);
+            questSys.ProgressQuest(Protos.Quest.MainQuest, null, false);
+            questSys.ProgressQuest(Protos.Quest.ShenaThieves, null, false);
 
             _mapManager.SetActiveMap(map.Id);
 

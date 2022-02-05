@@ -194,6 +194,7 @@ namespace OpenNefia.Content.Journal
                 var numText = new UiText(UiFonts.JournalText, $"{new string(' ', 16)}- {pageNum} -");
                 pageNumTexts.Add(numText);
                 container?.AddElement(numText);
+                addedLines = 0;
                 Pages.Add(new(curId, container!));
             }
 
@@ -236,7 +237,7 @@ namespace OpenNefia.Content.Journal
                     }
                     _CompletePage();
                 }
-                pages = args.Pages.Where(x => x.OrderAfter == curId);
+                pages = args.Pages.Where(x => x.OrderAfter == curId).ToList();
             }
 
             for (int i = 0; i < pageNumTexts.Count; i++)
