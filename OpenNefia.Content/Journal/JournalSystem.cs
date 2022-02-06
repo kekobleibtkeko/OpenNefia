@@ -28,6 +28,7 @@ namespace OpenNefia.Content.Journal
         public const string TitleRankPageId = "TitleRank";
         public const string IncomePageId = "Income";
         public const string CompletedQuestsPageId = "CompletedQuests";
+        public const string FailedQuestsPageId = "FailedQuests";
 
         private LocaleKey JournalKey = new("Elona.Journal");
 
@@ -46,7 +47,14 @@ namespace OpenNefia.Content.Journal
             {
                 if (status.Status == QuestStatusType.Unstarted || id == Protos.Quest.MainQuest)
                     continue;
-                args.Entries.Add(new JournalQuestEntry(id, status.Status == QuestStatusType.Completed ? CompletedQuestsPageId : QuestPageId));
+
+                var pageTarget = status.Status switch
+                {
+                    QuestStatusType.Completed => CompletedQuestsPageId,
+                    QuestStatusType.Failed => FailedQuestsPageId,
+                    _ => QuestPageId
+                };
+                args.Entries.Add(new JournalQuestEntry(id, pageTarget));
             }
         }
 
@@ -59,6 +67,7 @@ namespace OpenNefia.Content.Journal
             args.Pages.Add(new(TitleRankPageId, JournalKey.With(TitleRankPageId), QuestItemPageId));
             args.Pages.Add(new(IncomePageId, JournalKey.With(IncomePageId), TitleRankPageId));
             args.Pages.Add(new(CompletedQuestsPageId, JournalKey.With(CompletedQuestsPageId), IncomePageId));
+            args.Pages.Add(new(FailedQuestsPageId, JournalKey.With(FailedQuestsPageId), CompletedQuestsPageId));
 
             RaiseLocalEvent(GameSession.Player, args);
 

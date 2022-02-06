@@ -74,18 +74,25 @@ namespace OpenNefia.Content.Journal
             if (nodeRes == GetQuestNodeType.Failed)
                 yield break;
 
+            var progress = _entMan.EnsureComponent<QuestProgressComponent>(GameSession.Player);
             var title = Loc.GetPrototypeString(QuestID, "Title");
             if (!title.StartsWith("<"))
             {
-                title = nodeRes switch
+                if (progress.QuestProgress.TryGetValue(QuestID, out var status))
                 {
-                    GetQuestNodeType.End => Loc.GetString("Elona.Journal.QuestDone") + title,
-                    _ => $"({title})",
-                };
+                    title = status.Status switch
+                    {
+                        QuestStatusType.Failed => Loc.GetString("Elona.Journal.QuestFailed") + title,
+                        _ => Loc.GetString("Elona.Journal.QuestDone") + title
+                    };
+                }
+                else
+                {
+                    title = $"({title})";
+                }
                 yield return new JournalHeader(title);
             }
 
-            var progress = _entMan.EnsureComponent<QuestProgressComponent>(GameSession.Player);
             if (nodeRes == GetQuestNodeType.Succeeded)
             {
                 yield return new JournalContent(node!.GetDescription(QuestID, progress));
